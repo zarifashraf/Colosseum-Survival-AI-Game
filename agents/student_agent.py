@@ -1,7 +1,8 @@
-# Student agent: Add your own agent here
+#Student agent: Add your own agent here
 from agents.agent import Agent
 from store import register_agent
 import sys
+import time
 
 
 @register_agent("student_agent")
@@ -21,6 +22,17 @@ class StudentAgent(Agent):
             "l": 3,
         }
 
+    def wait(seconds):
+        uptime_start = getUptime()
+        uptime = uptime_start
+        while(uptime != uptime_start + seconds):
+            uptime = getUptime()
+    
+    def getUptime():
+        with open("/proc/uptime", "r") as f:
+            uptime = f.read().split(" ")[0].strip()
+        return int(float(uptime))
+
     def step(self, chess_board, my_pos, adv_pos, max_step):
         """
         Implement the step function of your agent here.
@@ -29,12 +41,24 @@ class StudentAgent(Agent):
         - my_pos: a tuple of (x, y)
         - adv_pos: a tuple of (x, y)
         - max_step: an integer
-
         You should return a tuple of ((x, y), dir),
         where (x, y) is the next position of your agent and dir is the direction of the wall
         you want to put on.
-
         Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
         """
+        """ if self.is_first_round:
+            self.is_first_round = False
+            time_limit = time()
+            root = MonteCarloTreeSearchNode(state(self.start_pos, self.adv_pos, -1, deepcopy(self.chess_board), max_step), time_limit)
+            selected_node = root.best_action()
+        else:
+            time_limit = time.time_ns() + TWO_SEC_TIME
+            root = MonteCarloTreeSearchNode(state(self.start_pos, self.adv_pos, -1, deepcopy(self.chess_board), max_step), time_limit)
+            selected_node = root.best_action()
+        # print(selected_node)
+        next_pos = selected_node.state.cur_pos
+        dir = selected_node.state.dir
+        howMuchTime = selected_node.time_limit - time.time_ns()
+        print(str(howMuchTime) + " sec")"""
         # dummy return
         return my_pos, self.dir_map["u"]
