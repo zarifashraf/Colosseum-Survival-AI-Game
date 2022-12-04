@@ -102,29 +102,39 @@ class StudentAgent(Agent):
                 barriers += 1;
         
         return barriers;
-
-    def relative_dir_ideal(self, mypos, advpos):
-        r1, c1 = mypos
-        r2, c2 = advpos
-        if r1 > r2 and c1 > c2:
-            return [0, 3]
-        elif r1 > r2 and c1 == c2:
-            return [0]
-        elif r1 > r2 and c1 < c2:
-            return [0, 1]
-        elif r1 == r2 and c1 > c2:
-            return [3]
-        elif r1 == r2 and c1 < c2:
-            return [1]
-        elif r1 < r2 and c1 > c2:
-            return [2, 3]
-        elif r1 < r2 and c1 == c2:
-            return [2]
-        elif r1 < r2 and c1 < c2:
-            return [1, 2]
+    
+    # returns 1 if var 1 > var 2 & -1 if var 1 < var 2, otherwise 0
+    def relativePositioning(self, var1, var2):
+        
+        if ((var1 - var2) > 0):
+            return 1;
+        elif ((var1 - var2) < 0):
+            return -1;
         else:
-            return [-1]
+            return 0;
 
+    # Calculating the relative position of the adversary 
+    def relative_dir_ideal(self, my_pos, adv_pos):
+        
+        result = [];
+
+        adv_pos_dict = dict({(1, 1) : [0, 3] , (1, 0) : [0], (1, -1) : [0, 1],
+                             (0, 1) : [3], (0, -1) : [1], (-1, 1) : [2, 3],
+                             (-1, 0) : [2], (-1 , -1): [1,2]})
+        
+        my_row, my_col = my_pos;
+        adv_row, adv_col = adv_pos;
+        
+        key_checker = tuple((self.relativePositioning(my_row, adv_row), self.relativePositioning(my_col, adv_col)));
+
+        for key in adv_pos_dict.keys():
+            if (key_checker == key):
+                result = adv_pos_dict.get(key);
+                break;
+        
+        return result;
+    
+    # BEGIN HERE BIG BOSS BABLU
     def relative_dir_worse(self, mypos, advpos):
         r1, c1 = mypos
         r2, c2 = advpos
@@ -233,7 +243,7 @@ class StudentAgent(Agent):
         you want to put on.
         Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
         """
-        # dummy return
+
 
         ori_pos = deepcopy(my_pos)
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
