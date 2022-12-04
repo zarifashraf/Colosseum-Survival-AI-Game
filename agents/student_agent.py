@@ -1,4 +1,3 @@
-# Student agent: Add your own agent here
 from agents.agent import Agent
 from store import register_agent
 import sys
@@ -7,10 +6,6 @@ from copy import deepcopy
 
 @register_agent("student_agent")
 class StudentAgent(Agent):
-    """
-    A dummy class for your implementation. Feel free to use this class to
-    add any helper functionalities needed for your agent.
-    """
 
     def __init__(self):
         super(StudentAgent, self).__init__()
@@ -23,66 +18,90 @@ class StudentAgent(Agent):
         }
         self.autoplay = True
 
-    def available_pos(self, chess_board, my_pos, adv_pos, max_step):
-        moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
-        step = 0
-        cur_pos = my_pos
-        state_queue = [(cur_pos, step)]
-        visited = {tuple(cur_pos)}
-        while state_queue:
-            cur_pos, step = state_queue.pop(0)
-            r, c = cur_pos
-            if step == max_step:
-                break
+    # helper function 1
+    def possibleSteps(self, chess_board, my_pos, adv_pos, max_step):
+        
+        moves = ((-1, 0), (0, 1), (1, 0), (0, -1)); # U, R, D, L
+        stepCount = 0;
+        current_pos = my_pos;
+        
+        state_queue = [(current_pos, stepCount)];
+        tested = {tuple(current_pos)};
+        
+        while (len(state_queue) != 0):
+            
+            current_pos, stepCount = state_queue.pop(0);
+            row, col = current_pos;
+            
+            if (stepCount >= max_step): 
+                break;
+
             for dir, move in enumerate(moves):
-                if chess_board[r, c, dir]:
-                    continue
-                r1, c1 = move
-                next_pos = (r1 + r, c + c1)
-                if (next_pos == adv_pos) or tuple(next_pos) in visited:
-                    continue
-                visited.add(tuple(next_pos))
-                state_queue.append((next_pos, step + 1))  # type: ignore
+                
+                if (chess_board[row, col, dir] == True):
+                    continue;
 
-        visited = sorted(visited, key=lambda x: self.mht_dis(x, adv_pos))
-        return visited
+                row_step, col_step = move;
+                next_pos = (row_step + row, col_step + col);
+                
+                if (next_pos == adv_pos) or tuple(next_pos) in tested:
+                    continue;
 
-    def score(self, score_chess_board, score_pos, max_step):
-        moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
-        step = 0
-        cur_pos = score_pos
-        state_queue = [(cur_pos, step)]
-        visited = {tuple(cur_pos)}
-        while state_queue:
-            cur_pos, step = state_queue.pop(0)
-            r, c = cur_pos
-            if step == max_step:
-                break
+                tested.add(tuple(next_pos));
+                state_queue.append((next_pos, stepCount + 1)); # type: ignore 
+
+        tested = sorted(tested, key = lambda next: self.calculateDistance(next, adv_pos));
+        return tested;
+
+    # helper function 2
+    def score(self, chess_board, my_pos, max_step):
+        
+        moves = ((-1, 0), (0, 1), (1, 0), (0, -1));
+        stepCount = 0;
+        current_pos = my_pos;
+        state_queue = [(current_pos, stepCount)];
+        tested = {tuple(current_pos)};
+        
+        while (len(state_queue) != 0):
+            
+            current_pos, stepCount = state_queue.pop(0);
+            row, col = current_pos;
+            
+            if (stepCount >= max_step): 
+                break;
+
             for dir, move in enumerate(moves):
-                # print(r,c,dir,score_chess_board[r, c, dir])
-                if score_chess_board[r, c, dir]:
-                    continue
-                r1, c1 = move
-                next_pos = (r1 + r, c + c1)
-                if tuple(next_pos) in visited:
-                    continue
-                visited.add(tuple(next_pos))
-                state_queue.append((next_pos, step + 1))  # type: ignore
-        # print(visited)
-        return len(visited)
+                
+                if (chess_board[row, col, dir] == True):
+                    continue;
 
-    def mht_dis(self, pos1, pos2):
-        r1, c1 = pos1
-        r2, c2 = pos2
-        return abs(r1 - r2) + abs(c1 - c2)
+                row_step, col_step = move;
+                next_pos = (row_step + row, col_step + col);
 
-    def bar_dis(self, pos, chess_board):
-        score = 0
-        r, c = pos
-        for i in [0, 1, 2, 3]:
-            if chess_board[r, c, i] == True:
-                score += 1
-        return score
+                if tuple(next_pos) in tested:
+                    continue;
+                
+                tested.add(tuple(next_pos));
+                state_queue.append((next_pos, stepCount + 1))  # type: ignore
+
+        return len(tested);
+
+    # Calculates the distance between two positions
+    def calculateDistance(self, pos_1, pos_2):
+        row1, col1 = pos_1;
+        row2, col2 = pos_2;
+        return (abs(row2 - row1) + abs(col2 - col1));
+
+    # Caculate the number of barriers around a given position
+    def calcualteBarrierNumbers(self, pos, chess_board):
+        barriers = 0;
+        row, col = pos;
+        
+        for i in range(0,4):
+            if (chess_board[row, col, i] == True):
+                barriers += 1;
+        
+        return barriers;
 
     def relative_dir_ideal(self, mypos, advpos):
         r1, c1 = mypos
@@ -240,7 +259,7 @@ class StudentAgent(Agent):
                 state_queue.append((next_pos, step + 1))  # type: ignore
                 
 
-        visited = sorted(visited, key=lambda x: self.mht_dis(x, adv_pos) + self.bar_dis(x, chess_board))
+        visited = sorted(visited, key=lambda x: self.calculateDistance(x, adv_pos) + self.calcualteBarrierNumbers(x, chess_board))
         for pos in visited:
             r, c = pos
             for dir in self.relative_dir_ideal(pos, adv_pos):
@@ -301,7 +320,7 @@ class StudentAgent(Agent):
                         new_chessboard[r, c - 1, 1] = True
                     result = self.check_endgame(size, new_chessboard, pos, adv_pos)
                     if not result[0]:
-                        adv_possible_pos = self.available_pos(new_chessboard, adv_pos, pos, max_step)
+                        adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step)
                         loss_count = 0
                         for a_pos in adv_possible_pos:
                             a_r, a_c = a_pos
@@ -358,7 +377,7 @@ class StudentAgent(Agent):
                             new_chessboard[r, c - 1, 1] = True
                         result = self.check_endgame(size, new_chessboard, pos, adv_pos)
                         if not result[0]:
-                            adv_possible_pos = self.available_pos(new_chessboard, adv_pos, pos, max_step)
+                            adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step)
                             loss_count = 0
                             for a_pos in adv_possible_pos:
                                 a_r, a_c = a_pos
