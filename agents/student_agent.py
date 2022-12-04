@@ -2,7 +2,6 @@
 from agents.agent import Agent
 from store import register_agent
 import sys
-import numpy as np
 from copy import deepcopy
 
 
@@ -40,7 +39,7 @@ class StudentAgent(Agent):
                     continue
                 r1, c1 = move
                 next_pos = (r1 + r, c + c1)
-                if np.array_equal(next_pos, adv_pos) or tuple(next_pos) in visited:
+                if (next_pos == adv_pos) or tuple(next_pos) in visited:
                     continue
                 visited.add(tuple(next_pos))
                 state_queue.append((next_pos, step + 1))  # type: ignore
@@ -235,7 +234,7 @@ class StudentAgent(Agent):
                     continue
                 r1, c1 = move
                 next_pos = (r1 + r, c + c1)
-                if np.array_equal(next_pos, adv_pos) or tuple(next_pos) in visited:
+                if (next_pos == adv_pos) or tuple(next_pos) in visited:
                     continue
                 visited.add(tuple(next_pos))
                 state_queue.append((next_pos, step + 1))  # type: ignore
