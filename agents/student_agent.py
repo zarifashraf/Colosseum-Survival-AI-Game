@@ -182,66 +182,58 @@ class StudentAgent(Agent):
             row = position[0]
             col = position[1]
 
-            for direction in self.possible_adv_dir(position, adv_pos, is_ideal):
+            dir_dict = dict({0: [-1, 0, 2],
+                             1: [0, 1, 2],
+                             2: [1, 0, -2],
+                             3: [0, -1, -2]})
+
+            dir_list = self.possible_adv_dir(position, adv_pos, is_ideal)
+
+            for direction in dir_list:
+                list1 = [row, col, direction]
                 if chess_board[row, col, direction] == False:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[row, col, direction] = True
-                    if direction == 0:
-                        new_chessboard[row - 1, col, 2] = True
-                    if direction == 1:
-                        new_chessboard[row, col + 1, 3] = True
-                    if direction == 2:
-                        new_chessboard[row + 1, col, 0] = True
-                    if direction == 3:
-                        new_chessboard[row, col - 1, 1] = True
-                    result = self.check_endgame(new_chessboard, position, adv_pos)
-                    if result[0]:
+                    chessboard_copy = deepcopy(chess_board)
+                    chessboard_copy[row, col, direction] = True
+
+                    for key in dir_dict.keys():
+                        if direction == key:
+                            list2 = dir_dict.get(key)
+                            res_list = [list1[i] + list2[i] for i in range(len(list2))]
+                            break
+
+                    res_row, res_col, res_dir = res_list
+                    chessboard_copy[res_row, res_col, res_dir] = True
+                    result = self.check_endgame(chessboard_copy, position, adv_pos)
+
+                    if result[0] == True:
                         if result[1] == 0:
-                            # print("s1.1")
                             return position, direction
-                        if result[1] == 1:
+                        else:
                             continue
 
         return None
 
-    def step(self, chess_board, my_pos, adv_pos, max_step):
-        """
-        Implement the step function of your agent here.
-        You can use the following variables to access the chess board:
-        - chess_board: a numpy array of shape (x_max, y_max, 4)
-        - my_pos: a tuple of (x, y)
-        - adv_pos: a tuple of (x, y)
-        - max_step: an integer
-        You should return a tuple of ((x, y), dir),
-        where (x, y) is the next position of your agent and dir is the direction of the wall
-        you want to put on.
-        Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
-        """
-        ori_pos = deepcopy(my_pos)
-        moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
-        size = len(chess_board)
-        step = 0
-        cur_pos = ori_pos
-        state_queue = [(cur_pos, step)]
-        visited = {tuple(cur_pos)}
-
-        visited = self.possibleSteps(chess_board, my_pos, adv_pos, max_step, True)
-
-        result = self.finishing_move(visited, chess_board, adv_pos, True)
-
-        if result is not None:
-            position, direction = result
-            return position, direction
-
-        result = self.finishing_move(visited, chess_board, adv_pos, False)
-
-        if result is not None:
-            position, direction = result
-            return position, direction
-
+    def chasing_algorithm(self, visited, chess_board, adv_pos, is_ideal):
         for pos in visited:
             r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, True):
+            for dir in self.possible_adv_dir(pos, adv_pos, is_ideal):
+                if not chess_board[r, c, dir]:
+                    new_chessboard = deepcopy(chess_board)
+                    new_chessboard[r, c, dir] = True
+                    if dir == 0:
+                        new_chessboard[r - 1, c, 2] = True
+                    if dir == 1:
+                        new_chessboard[r, c + 1, 3] = True
+                    if dir == 2:
+                        new_chessboard[r + 1, c, 0] = True
+                    if dir == 3:
+                        new_chessboard[r, c - 1, 1] = True
+                    return pos, dir
+
+    def path_planner(self, visited, chess_board, adv_pos, max_step, is_ideal):
+        for pos in visited:
+            r, c = pos
+            for dir in self.possible_adv_dir(pos, adv_pos, is_ideal):
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[r, c, dir] = True
@@ -296,123 +288,74 @@ class StudentAgent(Agent):
                         if loss_count == 0:
                             return pos, dir
 
-            for pos in visited:
-                r, c = pos
-                for dir in self.possible_adv_dir(pos, adv_pos, False):
-                    if not chess_board[r, c, dir]:
-                        new_chessboard = deepcopy(chess_board)
-                        new_chessboard[r, c, dir] = True
-                        if dir == 0:
-                            new_chessboard[r - 1, c, 2] = True
-                        if dir == 1:
-                            new_chessboard[r, c + 1, 3] = True
-                        if dir == 2:
-                            new_chessboard[r + 1, c, 0] = True
-                        if dir == 3:
-                            new_chessboard[r, c - 1, 1] = True
-                        result = self.check_endgame(new_chessboard, pos, adv_pos)
-                        if not result[0]:
-                            adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step, False)
-                            loss_count = 0
-                            for a_pos in adv_possible_pos:
-                                a_r, a_c = a_pos
-                                for a_dir in self.possible_adv_dir(a_pos, pos, True):
-                                    new_new_chessboard = deepcopy(new_chessboard)
-                                    if not new_new_chessboard[a_r, a_c, a_dir]:
-                                        new_new_chessboard[a_r, a_c, a_dir] = True
-                                        if a_dir == 0:
-                                            new_new_chessboard[a_r - 1, a_c, 2] = True
-                                        if a_dir == 1:
-                                            new_new_chessboard[a_r, a_c + 1, 3] = True
-                                        if a_dir == 2:
-                                            new_new_chessboard[a_r + 1, a_c, 0] = True
-                                        if a_dir == 3:
-                                            new_new_chessboard[a_r, a_c - 1, 1] = True
-                                        a_result = self.check_endgame(new_new_chessboard, pos, a_pos)
-                                        if a_result[0]:
-                                            if a_result[1] == 1:
-                                                loss_count += 1
-                            for a_pos in adv_possible_pos:
-                                a_r, a_c = a_pos
-                                for a_dir in self.possible_adv_dir(a_pos, pos, False):
-                                    new_new_chessboard = deepcopy(new_chessboard)
-                                    if not new_new_chessboard[a_r, a_c, a_dir]:
-                                        new_new_chessboard[a_r, a_c, a_dir] = True
-                                        if a_dir == 0:
-                                            new_new_chessboard[a_r - 1, a_c, 2] = True
-                                        if a_dir == 1:
-                                            new_new_chessboard[a_r, a_c + 1, 3] = True
-                                        if a_dir == 2:
-                                            new_new_chessboard[a_r + 1, a_c, 0] = True
-                                        if a_dir == 3:
-                                            new_new_chessboard[a_r, a_c - 1, 1] = True
-                                        a_result = self.check_endgame(new_new_chessboard, pos, a_pos, )
-                                        if a_result[0]:
-                                            if a_result[1] == 1:
-                                                loss_count += 1
-                            if loss_count == 0:
-                                return pos, dir
-        for pos in visited:
-            r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, True):
-                if not chess_board[r, c, dir]:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    if dir == 0:
-                        new_chessboard[r - 1, c, 2] = True
-                    if dir == 1:
-                        new_chessboard[r, c + 1, 3] = True
-                    if dir == 2:
-                        new_chessboard[r + 1, c, 0] = True
-                    if dir == 3:
-                        new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(new_chessboard, pos, adv_pos)
-                    if not result[0]:
-                        return pos, dir
-        for pos in visited:
-            r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, False):
-                if not chess_board[r, c, dir]:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    if dir == 0:
-                        new_chessboard[r - 1, c, 2] = True
-                    if dir == 1:
-                        new_chessboard[r, c + 1, 3] = True
-                    if dir == 2:
-                        new_chessboard[r + 1, c, 0] = True
-                    if dir == 3:
-                        new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(new_chessboard, pos, adv_pos)
-                    if not result[0]:
-                        return pos, dir
-        for pos in visited:
-            r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, True):
-                if not chess_board[r, c, dir]:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    if dir == 0:
-                        new_chessboard[r - 1, c, 2] = True
-                    if dir == 1:
-                        new_chessboard[r, c + 1, 3] = True
-                    if dir == 2:
-                        new_chessboard[r + 1, c, 0] = True
-                    if dir == 3:
-                        new_chessboard[r, c - 1, 1] = True
-                    return pos, dir
-        for pos in visited:
-            r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, False):
-                if not chess_board[r, c, dir]:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    if dir == 0:
-                        new_chessboard[r - 1, c, 2] = True
-                    if dir == 1:
-                        new_chessboard[r, c + 1, 3] = True
-                    if dir == 2:
-                        new_chessboard[r + 1, c, 0] = True
-                    if dir == 3:
-                        new_chessboard[r, c - 1, 1] = True
-                    return pos, dir
+
+    def step(self, chess_board, my_pos, adv_pos, max_step):
+        """
+        Implement the step function of your agent here.
+        You can use the following variables to access the chess board:
+        - chess_board: a numpy array of shape (x_max, y_max, 4)
+        - my_pos: a tuple of (x, y)
+        - adv_pos: a tuple of (x, y)
+        - max_step: an integer
+        You should return a tuple of ((x, y), dir),
+        where (x, y) is the next position of your agent and dir is the direction of the wall
+        you want to put on.
+        Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
+        """
+        ori_pos = deepcopy(my_pos)
+        moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
+        size = len(chess_board)
+        step = 0
+        cur_pos = ori_pos
+        state_queue = [(cur_pos, step)]
+        visited = {tuple(cur_pos)}
+
+        visited = self.possibleSteps(chess_board, my_pos, adv_pos, max_step, True)
+
+        result = self.finishing_move(visited, chess_board, adv_pos, True)
+
+        if result is not None:
+            position, direction = result
+            return position, direction
+
+        result = self.finishing_move(visited, chess_board, adv_pos, False)
+
+        if result is not None:
+            position, direction = result
+            return position, direction
+
+        path_plan = self.path_planner(visited, chess_board, adv_pos, max_step, True)
+
+        if path_plan is not None:
+            position, direction = path_plan
+            return position, direction
+
+        path_plan = self.path_planner(visited, chess_board, adv_pos, max_step, False)
+
+        if path_plan is not None:
+            position, direction = path_plan
+            return position, direction
+
+        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, True)
+
+        if next_move is not None:
+            position, direction = next_move
+            return position, direction
+
+        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, False)
+
+        if next_move is not None:
+            position, direction = next_move
+            return position, direction
+
+        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, True)
+
+        if next_move is not None:
+            position, direction = next_move
+            return position, direction
+
+        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, False)
+
+        if next_move is not None:
+            position, direction = next_move
+            return position, direction
