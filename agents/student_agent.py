@@ -19,7 +19,7 @@ class StudentAgent(Agent):
         self.autoplay = True
 
     # helper function 1
-    def possibleSteps(self, chess_board, my_pos, adv_pos, max_step):
+    def possibleSteps(self, chess_board, my_pos, adv_pos, max_step, calc_barrier):
         moves, stepCount, current_pos = ((-1, 0), (0, 1), (1, 0), (0, -1)), 0, my_pos  # U, R, D, L, step, position
         pos_list, tested = [(current_pos, stepCount)], {tuple(current_pos)}
 
@@ -59,7 +59,10 @@ class StudentAgent(Agent):
         index_2 = 0
 
         for positions in tested:
-            dist_position = self.calculateDistance(positions, adv_pos)
+            if calc_barrier:
+                dist_position = self.calculateDistance(positions, adv_pos) + self.calculateBarrierNumbers(positions, chess_board)
+            else:
+                dist_position = self.calculateDistance(positions, adv_pos)
             dist_tested.append((index, dist_position))
             index += 1
 
@@ -129,7 +132,7 @@ class StudentAgent(Agent):
 
         return result
 
-    # Taken from world.py
+    # FUNCTION TAKE FROM WORLD.PY
     def check_endgame(self, chess_board, p0_pos, p1_pos):
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
         board_size = chess_board.shape[0]
@@ -174,20 +177,31 @@ class StudentAgent(Agent):
             player_win = 1
         return True, player_win
 
-    def check_oneshot(self, visited, chess_board, size, adv_pos, dir_sequence):
-        for pos in visited:
-            r, c = pos
-            for dir in dir_sequence(pos, adv_pos):
+    def check_oneshot(self, visited, chess_board, adv_pos):
+        for position in visited:
+            row = position[0]
+            col = position[1]
 
-                if not chess_board[r, c, dir]:
+            for direction in self.possible_adv_dir(position, adv_pos, True):
+                if chess_board[row, col, direction] == False:
                     new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    result = self.check_endgame(new_chessboard, pos, adv_pos)
+                    new_chessboard[row, col, direction] = True
+                    if direction == 0:
+                        new_chessboard[row - 1, col, 2] = True
+                    if direction == 1:
+                        new_chessboard[row, col + 1, 3] = True
+                    if direction == 2:
+                        new_chessboard[row + 1, col, 0] = True
+                    if direction == 3:
+                        new_chessboard[row, col - 1, 1] = True
+                    result = self.check_endgame(new_chessboard, position, adv_pos)
                     if result[0]:
                         if result[1] == 0:
-                            return pos, dir
+                            # print("s1.1")
+                            return position, direction
                         if result[1] == 1:
                             continue
+
         return None
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
@@ -203,8 +217,6 @@ class StudentAgent(Agent):
         you want to put on.
         Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
         """
-
-
         ori_pos = deepcopy(my_pos)
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
         size = len(chess_board)
@@ -213,44 +225,14 @@ class StudentAgent(Agent):
         state_queue = [(cur_pos, step)]
         visited = {tuple(cur_pos)}
 
-        while state_queue:
-            cur_pos, step = state_queue.pop(0)
-            r, c = cur_pos
-            if step == max_step:
-                break
-            for dir, move in enumerate(moves):
-                if chess_board[r, c, dir]:
-                    continue
-                r1, c1 = move
-                next_pos = (r1 + r, c + c1)
-                if (next_pos == adv_pos) or tuple(next_pos) in visited:
-                    continue
-                visited.add(tuple(next_pos))
-                state_queue.append((next_pos, step + 1))  # type: ignore
+        visited = self.possibleSteps(chess_board, my_pos, adv_pos, max_step, True)
 
+        result = self.check_oneshot(visited, chess_board, adv_pos)
 
-        visited = sorted(visited, key=lambda x: self.calculateDistance(x, adv_pos) + self.calculateBarrierNumbers(x, chess_board))
-        for pos in visited:
-            r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, True):
-                if not chess_board[r, c, dir]:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    if dir == 0:
-                        new_chessboard[r - 1, c, 2] = True
-                    if dir == 1:
-                        new_chessboard[r, c + 1, 3] = True
-                    if dir == 2:
-                        new_chessboard[r + 1, c, 0] = True
-                    if dir == 3:
-                        new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(new_chessboard, pos, adv_pos)
-                    if result[0]:
-                        if result[1] == 0:
-                            #print("s1.1")
-                            return pos, dir
-                        if result[1] == 1:
-                            continue
+        if result is not None:
+            pos, dir = result
+            return pos, dir
+
         for pos in visited:
             r, c = pos
             for dir in self.possible_adv_dir(pos, adv_pos, False):
@@ -290,7 +272,7 @@ class StudentAgent(Agent):
                         new_chessboard[r, c - 1, 1] = True
                     result = self.check_endgame(new_chessboard, pos, adv_pos)
                     if not result[0]:
-                        adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step)
+                        adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step, False)
                         loss_count = 0
                         for a_pos in adv_possible_pos:
                             a_r, a_c = a_pos
@@ -347,7 +329,7 @@ class StudentAgent(Agent):
                             new_chessboard[r, c - 1, 1] = True
                         result = self.check_endgame(new_chessboard, pos, adv_pos)
                         if not result[0]:
-                            adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step)
+                            adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step, False)
                             loss_count = 0
                             for a_pos in adv_possible_pos:
                                 a_r, a_c = a_pos
