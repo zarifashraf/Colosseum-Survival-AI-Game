@@ -168,9 +168,11 @@ class StudentAgent(Agent):
         p1_r = find(tuple(p1_pos))
         p0_score = list(father.values()).count(p0_r)
         p1_score = list(father.values()).count(p1_r)
+        
         if p0_r == p1_r:
             return False, p0_score, p1_score
         player_win = None
+        
         if p0_score >= p1_score:
             player_win = 0
         elif p0_score < p1_score:
@@ -178,29 +180,45 @@ class StudentAgent(Agent):
         return True, player_win
 
     def finishing_move(self, visited, chess_board, adv_pos, is_ideal):
+        
         for position in visited:
             row = position[0]
             col = position[1]
 
-            for direction in self.possible_adv_dir(position, adv_pos, is_ideal):
+            dir_dict = dict({0  : [-1, 0, 2],
+                             1  : [0, 1, 2],
+                             2  : [1, 0, -2],
+                             3  : [0, -1, -2]})
+
+            dir_list = self.possible_adv_dir(position, adv_pos, is_ideal)
+
+            for direction in dir_list:
+
+                list1 = [row, col, direction]
+                
                 if chess_board[row, col, direction] == False:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[row, col, direction] = True
-                    if direction == 0:
-                        new_chessboard[row - 1, col, 2] = True
-                    if direction == 1:
-                        new_chessboard[row, col + 1, 3] = True
-                    if direction == 2:
-                        new_chessboard[row + 1, col, 0] = True
-                    if direction == 3:
-                        new_chessboard[row, col - 1, 1] = True
-                    result = self.check_endgame(new_chessboard, position, adv_pos)
-                    if result[0]:
+                    
+                    chessboard_copy = deepcopy(chess_board)
+                    chessboard_copy[row, col, direction] = True
+                    
+                    for key in dir_dict.keys():
+                        if direction == key:
+                            list2 = dir_dict.get(key)
+                            res_list = [list1[i] + list2[i] for i in range(len(list2))]
+                            break
+
+                    res_row, res_col, res_dir = res_list
+                    chessboard_copy[res_row, res_col, res_dir] = True
+
+                    result = self.check_endgame(chessboard_copy, position, adv_pos)
+                    
+                    if result[0] == True:
+                        
                         if result[1] == 0:
-                            # print("s1.1")
                             return position, direction
-                        if result[1] == 1:
+                        else:
                             continue
+                        
 
         return None
 
