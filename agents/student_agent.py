@@ -213,80 +213,136 @@ class StudentAgent(Agent):
 
         return None
 
-    def chasing_algorithm(self, visited, chess_board, adv_pos, is_ideal):
-        for pos in visited:
-            r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, is_ideal):
-                if not chess_board[r, c, dir]:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    if dir == 0:
-                        new_chessboard[r - 1, c, 2] = True
-                    if dir == 1:
-                        new_chessboard[r, c + 1, 3] = True
-                    if dir == 2:
-                        new_chessboard[r + 1, c, 0] = True
-                    if dir == 3:
-                        new_chessboard[r, c - 1, 1] = True
-                    return pos, dir
+    def chasing_algorithm(self, visited, chess_board, adv_pos, is_ideal, last_effort):
+        for position in visited:
+            row = position[0]
+            col = position[1]
+
+            dir_dict = dict({0: [-1, 0, 2],
+                             1: [0, 1, 2],
+                             2: [1, 0, -2],
+                             3: [0, -1, -2]})
+            dir_list = self.possible_adv_dir(position, adv_pos, is_ideal)
+
+            for direction in dir_list:
+                list1 = [row, col, direction]
+                if chess_board[row, col, direction] == False:
+                    chessboard_copy = deepcopy(chess_board)
+                    chessboard_copy[row, col, direction] = True
+
+                    for key in dir_dict.keys():
+                        if direction == key:
+                            list2 = dir_dict.get(key)
+                            res_list = [list1[i] + list2[i] for i in range(len(list2))]
+                            break
+
+                    res_row, res_col, res_dir = res_list
+                    chessboard_copy[res_row, res_col, res_dir] = True
+
+                    if not last_effort:
+                        result = self.check_endgame(chessboard_copy, position, adv_pos)
+                        if not result[0]:
+                            return position, dir
+                    else:
+                        return position, dir
 
     def path_planner(self, visited, chess_board, adv_pos, max_step, is_ideal):
-        for pos in visited:
-            r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, is_ideal):
-                if not chess_board[r, c, dir]:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    if dir == 0:
-                        new_chessboard[r - 1, c, 2] = True
-                    if dir == 1:
-                        new_chessboard[r, c + 1, 3] = True
-                    if dir == 2:
-                        new_chessboard[r + 1, c, 0] = True
-                    if dir == 3:
-                        new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(new_chessboard, pos, adv_pos)
+        for position in visited:
+            row = position[0]
+            col = position[1]
+
+            dir_dict = dict({0: [-1, 0, 2],
+                             1: [0, 1, 2],
+                             2: [1, 0, -2],
+                             3: [0, -1, -2]})
+
+            dir_list = self.possible_adv_dir(position, adv_pos, is_ideal)
+
+            for direction in dir_list:
+                list1 = [row, col, direction]
+                if chess_board[row, col, direction] == False:
+                    chessboard_copy = deepcopy(chess_board)
+                    chessboard_copy[row, col, direction] = True
+
+                    for key in dir_dict.keys():
+                        if direction == key:
+                            list2 = dir_dict.get(key)
+                            res_list = [list1[i] + list2[i] for i in range(len(list2))]
+                            break
+
+                    res_row, res_col, res_dir = res_list
+                    chessboard_copy[res_row, res_col, res_dir] = True
+
+                    result = self.check_endgame(chessboard_copy, position, adv_pos)
                     if not result[0]:
-                        adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step, False)
+                        adv_possible_pos = self.possibleSteps(chessboard_copy, adv_pos, position, max_step, False)
                         loss_count = 0
+
                         for a_pos in adv_possible_pos:
-                            a_r, a_c = a_pos
-                            for a_dir in self.possible_adv_dir(a_pos, pos, True):
-                                new_new_chessboard = deepcopy(new_chessboard)
-                                if not new_new_chessboard[a_r, a_c, a_dir]:
-                                    new_new_chessboard[a_r, a_c, a_dir] = True
-                                    if a_dir == 0:
-                                        new_new_chessboard[a_r - 1, a_c, 2] = True
-                                    if a_dir == 1:
-                                        new_new_chessboard[a_r, a_c + 1, 3] = True
-                                    if a_dir == 2:
-                                        new_new_chessboard[a_r + 1, a_c, 0] = True
-                                    if a_dir == 3:
-                                        new_new_chessboard[a_r, a_c - 1, 1] = True
-                                    a_result = self.check_endgame(new_new_chessboard, pos, a_pos)
+                            a_row = position[0]
+                            a_col = position[1]
+
+                            a_dir_dict = dict({0: [-1, 0, 2],
+                                             1: [0, 1, 2],
+                                             2: [1, 0, -2],
+                                             3: [0, -1, -2]})
+
+                            a_dir_list = self.possible_adv_dir(a_pos, position, True)
+
+                            for a_direction in dir_list:
+                                a_list1 = [row, col, direction]
+                                a_chessboard = deepcopy(chessboard_copy)
+                                if a_chessboard[a_row, a_col, a_direction] == False:
+                                    a_chessboard[a_row, a_col, a_direction] = True
+
+                                    for key in dir_dict.keys():
+                                        if direction == key:
+                                            a_list2 = dir_dict.get(key)
+                                            res_list = [a_list1[i] + a_list2[i] for i in range(len(a_list2))]
+                                            break
+
+                                    a_res_row, a_res_col, a_res_dir = res_list
+                                    a_chessboard[a_res_row, a_res_col, a_res_dir] = True
+
+                                    a_result = self.check_endgame(a_chessboard, position, a_pos)
+
                                     if a_result[0]:
                                         if a_result[1] == 1:
                                             loss_count += 1
+
                         for a_pos in adv_possible_pos:
-                            a_r, a_c = a_pos
-                            for a_dir in self.possible_adv_dir(a_pos, pos, False):
-                                new_new_chessboard = deepcopy(new_chessboard)
-                                if not new_new_chessboard[a_r, a_c, a_dir]:
-                                    new_new_chessboard[a_r, a_c, a_dir] = True
-                                    if a_dir == 0:
-                                        new_new_chessboard[a_r - 1, a_c, 2] = True
-                                    if a_dir == 1:
-                                        new_new_chessboard[a_r, a_c + 1, 3] = True
-                                    if a_dir == 2:
-                                        new_new_chessboard[a_r + 1, a_c, 0] = True
-                                    if a_dir == 3:
-                                        new_new_chessboard[a_r, a_c - 1, 1] = True
-                                    a_result = self.check_endgame(new_new_chessboard, pos, a_pos)
+                                a_row = position[0]
+                                a_col = position[1]
+
+                                a_dir_dict = dict({0: [-1, 0, 2],
+                                                   1: [0, 1, 2],
+                                                   2: [1, 0, -2],
+                                                   3: [0, -1, -2]})
+
+                                a_dir_list = self.possible_adv_dir(a_pos, position, False)
+
+                                for a_direction in dir_list:
+                                    a_list1 = [row, col, direction]
+                                    a_chessboard = deepcopy(chessboard_copy)
+                                    if a_chessboard[a_row, a_col, a_direction] == False:
+                                        a_chessboard[a_row, a_col, a_direction] = True
+
+                                        for key in dir_dict.keys():
+                                            if direction == key:
+                                                a_list2 = dir_dict.get(key)
+                                                res_list = [a_list1[i] + a_list2[i] for i in range(len(a_list2))]
+                                                break
+
+                                        a_res_row, a_res_col, a_res_dir = res_list
+                                        a_chessboard[a_res_row, a_res_col, a_res_dir] = True
+
+                                    a_result = self.check_endgame(a_chessboard, position, a_pos)
+
                                     if a_result[0]:
                                         if a_result[1] == 1:
                                             loss_count += 1
                         if loss_count == 0:
-                            return pos, dir
+                            return position, direction
 
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
@@ -336,25 +392,25 @@ class StudentAgent(Agent):
             position, direction = path_plan
             return position, direction
 
-        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, True)
+        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, True, False)
 
         if next_move is not None:
             position, direction = next_move
             return position, direction
 
-        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, False)
+        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, False, False)
 
         if next_move is not None:
             position, direction = next_move
             return position, direction
 
-        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, True)
+        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, True, True)
 
         if next_move is not None:
             position, direction = next_move
             return position, direction
 
-        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, False)
+        next_move = self.chasing_algorithm(visited, chess_board, adv_pos, False, True)
 
         if next_move is not None:
             position, direction = next_move
