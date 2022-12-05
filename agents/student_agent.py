@@ -186,9 +186,14 @@ class StudentAgent(Agent):
                 if chess_board[row, col, direction] == False:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[row, col, direction] = True
-
-                    new_chessboard = self.move_and_block(row, col, direction, new_chessboard)
-
+                    if direction == 0:
+                        new_chessboard[row - 1, col, 2] = True
+                    if direction == 1:
+                        new_chessboard[row, col + 1, 3] = True
+                    if direction == 2:
+                        new_chessboard[row + 1, col, 0] = True
+                    if direction == 3:
+                        new_chessboard[row, col - 1, 1] = True
                     result = self.check_endgame(new_chessboard, position, adv_pos)
                     if result[0]:
                         if result[1] == 0:
@@ -198,19 +203,6 @@ class StudentAgent(Agent):
                             continue
 
         return None
-
-    def move_and_block(self, row, col, direction, new_chessboard):
-        if direction == 0:
-            new_chessboard[row - 1, col, 2] = True
-        if direction == 1:
-            new_chessboard[row, col + 1, 3] = True
-        if direction == 2:
-            new_chessboard[row + 1, col, 0] = True
-        if direction == 3:
-            new_chessboard[row, col - 1, 1] = True
-
-        return new_chessboard
-
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
         """
