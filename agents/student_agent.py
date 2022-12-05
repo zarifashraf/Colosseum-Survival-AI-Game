@@ -20,148 +20,122 @@ class StudentAgent(Agent):
 
     # helper function 1
     def possibleSteps(self, chess_board, my_pos, adv_pos, max_step):
-        
-        moves = ((-1, 0), (0, 1), (1, 0), (0, -1)); # U, R, D, L
-        stepCount = 0;
-        current_pos = my_pos;
-        
-        state_queue = [(current_pos, stepCount)];
-        tested = {tuple(current_pos)};
-        
-        while (len(state_queue) != 0):
-            
-            current_pos, stepCount = state_queue.pop(0);
-            row, col = current_pos;
-            
-            if (stepCount >= max_step): 
-                break;
+        moves, stepCount, current_pos = ((-1, 0), (0, 1), (1, 0), (0, -1)), 0, my_pos  # U, R, D, L, step, position
+        pos_list, tested = [(current_pos, stepCount)], {tuple(current_pos)}
 
-            for dir, move in enumerate(moves):
-                
-                if (chess_board[row, col, dir] == True):
-                    continue;
+        while len(pos_list) != 0:
+            current_pos, stepCount = pos_list.pop(0)
+            # row, col = current_pos
+            row = current_pos[0]
+            col = current_pos[1]
 
-                row_step, col_step = move;
-                next_pos = (row_step + row, col_step + col);
-                
-                if (next_pos == adv_pos) or tuple(next_pos) in tested:
-                    continue;
+            if stepCount >= max_step:
+                break
 
-                tested.add(tuple(next_pos));
-                state_queue.append((next_pos, stepCount + 1)); # type: ignore 
+            def check_next_move():
+                for direction, move in enumerate(moves):
+                    if chess_board[row, col, direction] == True:
+                        continue
 
-        tested = sorted(tested, key = lambda next: self.calculateDistance(next, adv_pos));
-        return tested;
+                    row_step = move[0]
+                    col_step = move[1]
+                    next_row, next_col = row_step + row, col_step + col
+                    next_pos = (next_row, next_col)
 
-    # helper function 2
-    def score(self, chess_board, my_pos, max_step):
-        
-        moves = ((-1, 0), (0, 1), (1, 0), (0, -1));
-        stepCount = 0;
-        current_pos = my_pos;
-        state_queue = [(current_pos, stepCount)];
-        tested = {tuple(current_pos)};
-        
-        while (len(state_queue) != 0):
-            
-            current_pos, stepCount = state_queue.pop(0);
-            row, col = current_pos;
-            
-            if (stepCount >= max_step): 
-                break;
+                    if tuple(next_pos) in tested:
+                        continue
 
-            for dir, move in enumerate(moves):
-                
-                if (chess_board[row, col, dir] == True):
-                    continue;
+                    if next_pos == adv_pos:
+                        continue
 
-                row_step, col_step = move;
-                next_pos = (row_step + row, col_step + col);
+                    tested.add(tuple(next_pos))
+                    pos_list.append((next_pos, stepCount + 1))  # type: ignore
 
-                if tuple(next_pos) in tested:
-                    continue;
-                
-                tested.add(tuple(next_pos));
-                state_queue.append((next_pos, stepCount + 1))  # type: ignore
+            check_next_move()
 
-        return len(tested);
+        dist_tested = []
+        sorted_tested = list(tested.copy())
+        index = 0
+        index_2 = 0
+
+        for positions in tested:
+            dist_position = self.calculateDistance(positions, adv_pos)
+            dist_tested.append((index, dist_position))
+            index += 1
+
+        sorted_dist_tested = sorted(dist_tested, key=lambda distance: distance[1])
+
+        for (ind, dist) in sorted_dist_tested:
+            sorted_tested[index_2] = list(tested)[ind]
+            index_2 += 1
+
+        return sorted_tested
 
     # Calculates the distance between two positions
     def calculateDistance(self, pos_1, pos_2):
-        row1, col1 = pos_1;
-        row2, col2 = pos_2;
-        return (abs(row2 - row1) + abs(col2 - col1));
+        return abs(pos_2[0] - pos_1[0]) + abs(pos_2[1] - pos_1[1])
 
     # Caculate the number of barriers around a given position
-    def calcualteBarrierNumbers(self, pos, chess_board):
-        barriers = 0;
-        row, col = pos;
-        
-        for i in range(0,4):
-            if (chess_board[row, col, i] == True):
-                barriers += 1;
-        
-        return barriers;
-    
+    def calculateBarrierNumbers(self, pos, chess_board):
+        barriers = 0
+        for i in range(4):
+            if chess_board[pos[0], pos[1], i]:
+                barriers += 1
+        return barriers
+
     # returns 1 if var 1 > var 2 & -1 if var 1 < var 2, otherwise 0
     def relativePositioning(self, var1, var2):
-        
-        if ((var1 - var2) > 0):
-            return 1;
-        elif ((var1 - var2) < 0):
-            return -1;
+
+        if (var1 - var2) > 0:
+            return 1
+        elif (var1 - var2) < 0:
+            return -1
         else:
-            return 0;
+            return 0
 
     # Calculating the relative position of the adversary 
-    def relative_dir_ideal(self, my_pos, adv_pos):
-        
-        result = [];
+    def possible_adv_dir(self, my_pos, adv_pos, is_ideal):
+        result = []
 
-        adv_pos_dict = dict({(1, 1) : [0, 3] , (1, 0) : [0], (1, -1) : [0, 1],
-                             (0, 1) : [3], (0, -1) : [1], (-1, 1) : [2, 3],
-                             (-1, 0) : [2], (-1 , -1): [1,2]})
-        
-        my_row, my_col = my_pos;
-        adv_row, adv_col = adv_pos;
-        
+        adv_pos_dict = dict()
+        if is_ideal:
+            adv_pos_dict = dict({(1, 1): [0, 3],
+                                 (1, 0): [0],
+                                 (1, -1): [0, 1],
+                                 (0, 1): [3],
+                                 (0, -1): [1],
+                                 (-1, 1): [2, 3],
+                                 (-1, 0): [2],
+                                 (-1, -1): [1, 2]})
+        else:
+            adv_pos_dict = dict({(1, 1): [1, 2],
+                                 (1, 0): [1, 2, 3],
+                                 (1, -1): [2, 3],
+                                 (0, 1): [0, 1, 2],
+                                 (0, -1): [0, 2, 3],
+                                 (-1, 1): [0, 1],
+                                 (-1, 0): [0, 1, 3],
+                                 (-1, -1): [0, 3]})
+
+        my_row, my_col = my_pos
+        adv_row, adv_col = adv_pos
+
         key_checker = tuple((self.relativePositioning(my_row, adv_row), self.relativePositioning(my_col, adv_col)));
 
         for key in adv_pos_dict.keys():
-            if (key_checker == key):
-                result = adv_pos_dict.get(key);
-                break;
-        
-        return result;
-    
-    # BEGIN HERE BIG BOSS BABLU
-    def relative_dir_worse(self, mypos, advpos):
-        r1, c1 = mypos
-        r2, c2 = advpos
-        if r1 > r2 and c1 > c2:
-            return [1, 2]
-        elif r1 > r2 and c1 == c2:
-            return [1, 2, 3]
-        elif r1 > r2 and c1 < c2:
-            return [2, 3]
-        elif r1 == r2 and c1 > c2:
-            return [0, 1, 2]
-        elif r1 == r2 and c1 < c2:
-            return [0, 2, 3]
-        elif r1 < r2 and c1 > c2:
-            return [0, 1]
-        elif r1 < r2 and c1 == c2:
-            return [0, 1, 3]
-        elif r1 < r2 and c1 < c2:
-            return [0, 3]
-        else:
-            return [-1]
+            if key_checker == key:
+                result = adv_pos_dict.get(key)
+                break
 
-    def check_endgame(self, size, chess_board, p0_pos, p1_pos):
+        return result
+
+    # Taken from world.py
+    def check_endgame(self, chess_board, p0_pos, p1_pos):
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
+        board_size = chess_board.shape[0]
         father = dict()
-        for r in range(size):
-            for c in range(size):
+        for r in range(board_size):
+            for c in range(board_size):
                 father[(r, c)] = (r, c)
 
         def find(pos):
@@ -172,8 +146,8 @@ class StudentAgent(Agent):
         def union(pos1, pos2):
             father[pos1] = pos2
 
-        for r in range(size):
-            for c in range(size):
+        for r in range(board_size):
+            for c in range(board_size):
                 for dir, move in enumerate(
                         moves[1:3]
                 ):  # Only check down and right
@@ -184,8 +158,8 @@ class StudentAgent(Agent):
                     if pos_a != pos_b:
                         union(pos_a, pos_b)
 
-        for r in range(size):
-            for c in range(size):
+        for r in range(board_size):
+            for c in range(board_size):
                 find((r, c))
         p0_r = find(tuple(p0_pos))
         p1_r = find(tuple(p1_pos))
@@ -200,20 +174,6 @@ class StudentAgent(Agent):
             player_win = 1
         return True, player_win
 
-    def check_endgame1(self, size, chess_board, p0_pos, p1_pos):
-
-        p0_score = self.score(chess_board, p0_pos, size * size)
-        p1_score = self.score(chess_board, p1_pos, size * size)
-        # print(p0_score, p1_score,p0_pos,dir)
-        if p0_score == p1_score:
-            return False, p0_score, p1_score
-        player_win = None
-        if p0_score > p1_score:
-            player_win = 0
-        elif p0_score < p1_score:
-            player_win = 1
-        return True, player_win
-
     def check_oneshot(self, visited, chess_board, size, adv_pos, dir_sequence):
         for pos in visited:
             r, c = pos
@@ -222,7 +182,7 @@ class StudentAgent(Agent):
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[r, c, dir] = True
-                    result = self.check_endgame(size, new_chessboard, pos, adv_pos)
+                    result = self.check_endgame(new_chessboard, pos, adv_pos)
                     if result[0]:
                         if result[1] == 0:
                             return pos, dir
@@ -267,12 +227,12 @@ class StudentAgent(Agent):
                     continue
                 visited.add(tuple(next_pos))
                 state_queue.append((next_pos, step + 1))  # type: ignore
-                
 
-        visited = sorted(visited, key=lambda x: self.calculateDistance(x, adv_pos) + self.calcualteBarrierNumbers(x, chess_board))
+
+        visited = sorted(visited, key=lambda x: self.calculateDistance(x, adv_pos) + self.calculateBarrierNumbers(x, chess_board))
         for pos in visited:
             r, c = pos
-            for dir in self.relative_dir_ideal(pos, adv_pos):
+            for dir in self.possible_adv_dir(pos, adv_pos, True):
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[r, c, dir] = True
@@ -284,7 +244,7 @@ class StudentAgent(Agent):
                         new_chessboard[r + 1, c, 0] = True
                     if dir == 3:
                         new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(size, new_chessboard, pos, adv_pos)
+                    result = self.check_endgame(new_chessboard, pos, adv_pos)
                     if result[0]:
                         if result[1] == 0:
                             #print("s1.1")
@@ -293,7 +253,7 @@ class StudentAgent(Agent):
                             continue
         for pos in visited:
             r, c = pos
-            for dir in self.relative_dir_worse(pos, adv_pos):
+            for dir in self.possible_adv_dir(pos, adv_pos, False):
 
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
@@ -306,7 +266,7 @@ class StudentAgent(Agent):
                         new_chessboard[r + 1, c, 0] = True
                     if dir == 3:
                         new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(size, new_chessboard, pos, adv_pos)
+                    result = self.check_endgame(new_chessboard, pos, adv_pos)
                     if result[0]:
                         if result[1] == 0:
                             #print("s1.2")
@@ -316,7 +276,7 @@ class StudentAgent(Agent):
 
         for pos in visited:
             r, c = pos
-            for dir in self.relative_dir_ideal(pos, adv_pos):
+            for dir in self.possible_adv_dir(pos, adv_pos, True):
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[r, c, dir] = True
@@ -328,13 +288,13 @@ class StudentAgent(Agent):
                         new_chessboard[r + 1, c, 0] = True
                     if dir == 3:
                         new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(size, new_chessboard, pos, adv_pos)
+                    result = self.check_endgame(new_chessboard, pos, adv_pos)
                     if not result[0]:
                         adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step)
                         loss_count = 0
                         for a_pos in adv_possible_pos:
                             a_r, a_c = a_pos
-                            for a_dir in self.relative_dir_ideal(a_pos, pos):
+                            for a_dir in self.possible_adv_dir(a_pos, pos, True):
                                 new_new_chessboard = deepcopy(new_chessboard)
                                 if not new_new_chessboard[a_r, a_c, a_dir]:
                                     new_new_chessboard[a_r, a_c, a_dir] = True
@@ -346,13 +306,13 @@ class StudentAgent(Agent):
                                         new_new_chessboard[a_r + 1, a_c, 0] = True
                                     if a_dir == 3:
                                         new_new_chessboard[a_r, a_c - 1, 1] = True
-                                    a_result = self.check_endgame(size, new_new_chessboard, pos, a_pos)
+                                    a_result = self.check_endgame(new_new_chessboard, pos, a_pos)
                                     if a_result[0]:
                                         if a_result[1] == 1:
                                             loss_count += 1
                         for a_pos in adv_possible_pos:
                             a_r, a_c = a_pos
-                            for a_dir in self.relative_dir_worse(a_pos, pos):
+                            for a_dir in self.possible_adv_dir(a_pos, pos, False):
                                 new_new_chessboard = deepcopy(new_chessboard)
                                 if not new_new_chessboard[a_r, a_c, a_dir]:
                                     new_new_chessboard[a_r, a_c, a_dir] = True
@@ -364,7 +324,7 @@ class StudentAgent(Agent):
                                         new_new_chessboard[a_r + 1, a_c, 0] = True
                                     if a_dir == 3:
                                         new_new_chessboard[a_r, a_c - 1, 1] = True
-                                    a_result = self.check_endgame(size, new_new_chessboard, pos, a_pos)
+                                    a_result = self.check_endgame(new_new_chessboard, pos, a_pos)
                                     if a_result[0]:
                                         if a_result[1] == 1:
                                             loss_count += 1
@@ -373,7 +333,7 @@ class StudentAgent(Agent):
 
             for pos in visited:
                 r, c = pos
-                for dir in self.relative_dir_worse(pos, adv_pos):
+                for dir in self.possible_adv_dir(pos, adv_pos, False):
                     if not chess_board[r, c, dir]:
                         new_chessboard = deepcopy(chess_board)
                         new_chessboard[r, c, dir] = True
@@ -385,13 +345,13 @@ class StudentAgent(Agent):
                             new_chessboard[r + 1, c, 0] = True
                         if dir == 3:
                             new_chessboard[r, c - 1, 1] = True
-                        result = self.check_endgame(size, new_chessboard, pos, adv_pos)
+                        result = self.check_endgame(new_chessboard, pos, adv_pos)
                         if not result[0]:
                             adv_possible_pos = self.possibleSteps(new_chessboard, adv_pos, pos, max_step)
                             loss_count = 0
                             for a_pos in adv_possible_pos:
                                 a_r, a_c = a_pos
-                                for a_dir in self.relative_dir_ideal(a_pos, pos):
+                                for a_dir in self.possible_adv_dir(a_pos, pos, True):
                                     new_new_chessboard = deepcopy(new_chessboard)
                                     if not new_new_chessboard[a_r, a_c, a_dir]:
                                         new_new_chessboard[a_r, a_c, a_dir] = True
@@ -403,13 +363,13 @@ class StudentAgent(Agent):
                                             new_new_chessboard[a_r + 1, a_c, 0] = True
                                         if a_dir == 3:
                                             new_new_chessboard[a_r, a_c - 1, 1] = True
-                                        a_result = self.check_endgame(size, new_new_chessboard, pos, a_pos)
+                                        a_result = self.check_endgame(new_new_chessboard, pos, a_pos)
                                         if a_result[0]:
                                             if a_result[1] == 1:
                                                 loss_count += 1
                             for a_pos in adv_possible_pos:
                                 a_r, a_c = a_pos
-                                for a_dir in self.relative_dir_worse(a_pos, pos):
+                                for a_dir in self.possible_adv_dir(a_pos, pos, False):
                                     new_new_chessboard = deepcopy(new_chessboard)
                                     if not new_new_chessboard[a_r, a_c, a_dir]:
                                         new_new_chessboard[a_r, a_c, a_dir] = True
@@ -421,7 +381,7 @@ class StudentAgent(Agent):
                                             new_new_chessboard[a_r + 1, a_c, 0] = True
                                         if a_dir == 3:
                                             new_new_chessboard[a_r, a_c - 1, 1] = True
-                                        a_result = self.check_endgame(size, new_new_chessboard, pos, a_pos, )
+                                        a_result = self.check_endgame(new_new_chessboard, pos, a_pos, )
                                         if a_result[0]:
                                             if a_result[1] == 1:
                                                 loss_count += 1
@@ -429,7 +389,7 @@ class StudentAgent(Agent):
                                 return pos, dir
         for pos in visited:
             r, c = pos
-            for dir in self.relative_dir_ideal(pos, adv_pos):
+            for dir in self.possible_adv_dir(pos, adv_pos, True):
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[r, c, dir] = True
@@ -441,12 +401,12 @@ class StudentAgent(Agent):
                         new_chessboard[r + 1, c, 0] = True
                     if dir == 3:
                         new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(size, new_chessboard, pos, adv_pos)
+                    result = self.check_endgame(new_chessboard, pos, adv_pos)
                     if not result[0]:
                         return pos, dir
         for pos in visited:
             r, c = pos
-            for dir in self.relative_dir_worse(pos, adv_pos):
+            for dir in self.possible_adv_dir(pos, adv_pos, False):
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[r, c, dir] = True
@@ -458,12 +418,12 @@ class StudentAgent(Agent):
                         new_chessboard[r + 1, c, 0] = True
                     if dir == 3:
                         new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(size, new_chessboard, pos, adv_pos)
+                    result = self.check_endgame(new_chessboard, pos, adv_pos)
                     if not result[0]:
                         return pos, dir
         for pos in visited:
             r, c = pos
-            for dir in self.relative_dir_ideal(pos, adv_pos):
+            for dir in self.possible_adv_dir(pos, adv_pos, True):
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[r, c, dir] = True
@@ -478,7 +438,7 @@ class StudentAgent(Agent):
                     return pos, dir
         for pos in visited:
             r, c = pos
-            for dir in self.relative_dir_worse(pos, adv_pos):
+            for dir in self.possible_adv_dir(pos, adv_pos, False):
                 if not chess_board[r, c, dir]:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[r, c, dir] = True
