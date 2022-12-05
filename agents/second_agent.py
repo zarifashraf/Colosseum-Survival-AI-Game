@@ -1,10 +1,9 @@
-# Second agent: Add your own agent here
 from copy import deepcopy
 import time
 from agents.agent import Agent
 from store import register_agent
 import math
-import numpy as np
+from random import randint
 import sys
 
 ###################################################################################### helper
@@ -175,7 +174,7 @@ class State:
         return check_endgame(self.chess_board, self.my_pos, self.adv_pos)
 
     def getRandomChildNode(self):
-        randnum = np.random.randint(0, len(self.leaf))
+        randnum = randint(0, len(self.leaf) - 1)
         return self.leaf[randnum]
 
     def check_valid_step(self, start_pos, end_pos, barrier_dir):
@@ -183,7 +182,7 @@ class State:
         r, c = end_pos
         if self.chess_board[r, c, barrier_dir]:
             return False
-        if np.array_equal(start_pos, end_pos):
+        if (start_pos == end_pos):
             return True
         # Get position of the adversary
         if self.playerNo == 1:
@@ -203,9 +202,9 @@ class State:
                 if self.chess_board[r, c, dir]:
                     continue
                 next_pos = (cur_pos[0] + move[0], cur_pos[1] + move[1])
-                if np.array_equal(next_pos, adv_pos) or tuple(next_pos) in visited:
+                if (next_pos == adv_pos) or tuple(next_pos) in visited:
                     continue
-                if np.array_equal(next_pos, end_pos):
+                if (next_pos == end_pos):
                     is_reached = True
                     break
                 visited.add(tuple(next_pos))
@@ -233,7 +232,7 @@ class State:
                         continue
 
                     next_pos = (r + move[0], c + move[1])
-                    if np.array_equal(next_pos, self.adv_pos) or tuple(next_pos) in visited:
+                    if (next_pos == self.adv_pos) or tuple(next_pos) in visited:
                         continue
                     for d in range(4):
                         if not self.chess_board[next_pos[0], next_pos[1], d]:
@@ -270,7 +269,7 @@ class State:
                         continue
 
                     next_pos = (r + move[0], c + move[1])
-                    if np.array_equal(next_pos, self.my_pos) or tuple(next_pos) in visited:
+                    if (next_pos == self.my_pos) or tuple(next_pos) in visited:
                         continue
                     for d in range(4):
                         if not self.chess_board[next_pos[0], next_pos[1], d]:
@@ -300,11 +299,11 @@ class State:
             my_pos = deepcopy(self.adv_pos)
             adv_pos = deepcopy(self.my_pos)
 
-        steps = np.random.randint(0, self.max_step + 1)
+        steps = randint(0, self.max_step)
         # Random Walk
         for _ in range(steps):
             r, c = my_pos
-            dir = np.random.randint(0, 4)
+            dir = randint(0, 3)
             m_r, m_c = self.moves[dir]
             my_pos = (r + m_r, c + m_c)
 
@@ -314,7 +313,7 @@ class State:
                 k += 1
                 if k > 300:
                     break
-                dir = np.random.randint(0, 4)
+                dir = randint(0, 3)
                 m_r, m_c = self.moves[dir]
                 my_pos = (r + m_r, c + m_c)
 
@@ -323,10 +322,10 @@ class State:
                 break
 
         # Put Barrier
-        dir = np.random.randint(0, 4)
+        dir = randint(0, 3)
         r, c = my_pos
         while self.chess_board[r, c, dir]:
-            dir = np.random.randint(0, 4)
+            dir = randint(0, 3)
 
         new_board = set_barrier(r, c, dir, deepcopy(self.chess_board))
         if self.playerNo == 1:
