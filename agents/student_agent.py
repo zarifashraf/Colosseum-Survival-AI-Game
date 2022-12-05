@@ -177,12 +177,12 @@ class StudentAgent(Agent):
             player_win = 1
         return True, player_win
 
-    def check_oneshot(self, visited, chess_board, adv_pos):
+    def finishing_move(self, visited, chess_board, adv_pos, is_ideal):
         for position in visited:
             row = position[0]
             col = position[1]
 
-            for direction in self.possible_adv_dir(position, adv_pos, True):
+            for direction in self.possible_adv_dir(position, adv_pos, is_ideal):
                 if chess_board[row, col, direction] == False:
                     new_chessboard = deepcopy(chess_board)
                     new_chessboard[row, col, direction] = True
@@ -227,34 +227,17 @@ class StudentAgent(Agent):
 
         visited = self.possibleSteps(chess_board, my_pos, adv_pos, max_step, True)
 
-        result = self.check_oneshot(visited, chess_board, adv_pos)
+        result = self.finishing_move(visited, chess_board, adv_pos, True)
 
         if result is not None:
-            pos, dir = result
-            return pos, dir
+            position, direction = result
+            return position, direction
 
-        for pos in visited:
-            r, c = pos
-            for dir in self.possible_adv_dir(pos, adv_pos, False):
+        result = self.finishing_move(visited, chess_board, adv_pos, False)
 
-                if not chess_board[r, c, dir]:
-                    new_chessboard = deepcopy(chess_board)
-                    new_chessboard[r, c, dir] = True
-                    if dir == 0:
-                        new_chessboard[r - 1, c, 2] = True
-                    if dir == 1:
-                        new_chessboard[r, c + 1, 3] = True
-                    if dir == 2:
-                        new_chessboard[r + 1, c, 0] = True
-                    if dir == 3:
-                        new_chessboard[r, c - 1, 1] = True
-                    result = self.check_endgame(new_chessboard, pos, adv_pos)
-                    if result[0]:
-                        if result[1] == 0:
-                            #print("s1.2")
-                            return pos, dir
-                        if result[1] == 1:
-                            continue
+        if result is not None:
+            position, direction = result
+            return position, direction
 
         for pos in visited:
             r, c = pos
