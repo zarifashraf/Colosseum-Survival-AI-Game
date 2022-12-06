@@ -1,7 +1,7 @@
-- name: Zarif Ashraf
-  mcgill_id: 260782942
-  email: zarif.ashraf@mail.mcgill.ca
+- name: "Zarif Ashraf"
+  mcgill_id: "260782942"
+  email: "zarif.ashraf@mail.mcgill.ca"
 
-- name: "Your full name as appears on your transcript"
-  mcgill_id: "Your mcgill id"
-  email: "email@mail.mcgill.ca"
+- name: "Abrar Fahad Rahman Anik"
+  mcgill_id: "260851928"
+  email: "abrar.anik@mail.mcgill.ca"
